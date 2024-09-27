@@ -40,3 +40,15 @@ def check_user_id(user_id):
         return True
     else:
         return False
+def find_chat_id(message_thread_id):
+    connection = sql.connect('DataBase')  # Подключение к базе данных
+    cursor = connection.cursor()
+
+    cursor.execute('''SELECT id FROM Users WHERE message_thread_id = ?''', (message_thread_id,))
+
+    user_id = cursor.fetchone()
+
+    connection.close()
+
+    return user_id
+

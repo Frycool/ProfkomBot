@@ -5,6 +5,8 @@ import logging
 from aiogram.filters import BaseFilter
 import sqlite3
 
+from DataBase import create_table, find_group_id, check_user_id, find_chat_id
+
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,7 +27,7 @@ class IsAdmin(BaseFilter):
         return message.from_user.id in self.admin_ids
 
 @dp.message(Command(commands=["start"]))
-async def process_start_command(message: Message):
+async def start_command(message: Message):
     global users
 
     user_id = message.from_user.id
