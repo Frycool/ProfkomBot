@@ -6,29 +6,96 @@ def create_table():
     cursor =  connection.cursor()
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS Users(
-    id REAL PRIMARY KEY,
-    message_thread_id REAL INTEGER
+    id INTEGER PRIMARY KEY,
+    message_thread_id INTEGER,
+    act INTEGER,
+    fio INTEGER
     )
     ''')
     connection.commit()
     connection.close()
 
+def create_new_user(user_id): # Просто создание связи между человек и группой
+    connection = sql.connect('DataBase')
+    cursor = connection.cursor()
 
+    cursor.execute('''INSERT INTO Users (id, message_thread_id, act, fio) VALUES (?, ?, ?, ?)''', (user_id, 42, 1, 0,))
+
+    connection.commit()
+    connection.close()
+
+def change_fio(user_id):
+    connection = sql.connect('DataBase')
+    cursor = connection.cursor()
+
+    cursor.execute('''UPDATE Users SET fio = ? WHERE id = ?''', (1 ,user_id,))
+
+    connection.commit()
+    connection.close()
+
+
+def change_message_thread_id(user_id,message_thread_id):
+    connection = sql.connect('DataBase')
+    cursor = connection.cursor()
+
+    cursor.execute('''UPDATE Users SET message_thread_id = ? WHERE id = ?''', (message_thread_id, user_id,))
+
+    connection.commit()
+    connection.close()
+
+def find_fio(user_id): # Эта часть кода првоверяет, ФИО вписано пользователем или нет
+    connection = sql.connect('DataBase')
+    cursor = connection.cursor()
+
+    cursor.execute('''SELECT fio FROM Users WHERE id = ?''', (user_id,))
+
+    fio = cursor.fetchone()[0]
+    connection.close()
+
+    return fio
+
+def find_act(user_id): # Эта часть кода првоверяет, ФИО вписано пользователем или нет
+    connection = sql.connect('DataBase')
+    cursor = connection.cursor()
+
+    cursor.execute('''SELECT act FROM Users WHERE id = ?''', (user_id,))
+
+    act = cursor.fetchone()
+
+    connection.close()
+
+    return act
+
+def change_act(user_id):
+    connection = sql.connect('DataBase')
+    cursor = connection.cursor()
+
+    cursor.execute('''SELECT act FROM Users WHERE id = ?''', (user_id,))
+
+    message_tread_id = cursor.fetchone()
+
+    if message_tread_id == 0:
+        cursor.execute('''UPDATE Users SET act = ? WHERE id = ?''', (1,user_id,))
+    else:
+        cursor.execute('''UPDATE Users SET act = ? WHERE id = ?''', (0, user_id,))
+
+    connection.commit()
+    connection.close()
 
 def find_group_id(user_id):
-    connection = sql.connect('DataBase')  # Подключение к базе данных
+    connection = sql.connect('DataBase')
     cursor = connection.cursor()
 
     cursor.execute('''SELECT message_thread_id FROM Users WHERE id = ?''', (user_id,))
 
-    message_tread_id = cursor.fetchone()
+    message_tread_id = cursor.fetchone()[0]
 
     connection.close()
 
     return message_tread_id
 
 def check_user_id(user_id):
-    connection = sql.connect('DataBase')  # Подключение к базе данных
+    connection = sql.connect('DataBase')
     cursor = connection.cursor()
 
     cursor.execute('''SELECT id FROM Users WHERE id = ?''', (user_id,))
@@ -40,15 +107,15 @@ def check_user_id(user_id):
         return True
     else:
         return False
+
 def find_chat_id(message_thread_id):
-    connection = sql.connect('DataBase')  # Подключение к базе данных
+    connection = sql.connect('DataBase')
     cursor = connection.cursor()
 
     cursor.execute('''SELECT id FROM Users WHERE message_thread_id = ?''', (message_thread_id,))
 
-    user_id = cursor.fetchone()
+    user_id = cursor.fetchone()[0]
 
     connection.close()
 
     return user_id
-
