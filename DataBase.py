@@ -9,7 +9,8 @@ def create_table():
     id INTEGER PRIMARY KEY,
     message_thread_id INTEGER,
     act INTEGER,
-    fio INTEGER
+    fio INTEGER,
+    admin INTEGER
     )
     ''')
     connection.commit()
@@ -19,10 +20,45 @@ def create_new_user(user_id): # Просто создание связи меж�
     connection = sql.connect('DataBase')
     cursor = connection.cursor()
 
-    cursor.execute('''INSERT INTO Users (id, message_thread_id, act, fio) VALUES (?, ?, ?, ?)''', (user_id, 42, 1, 0,))
+    cursor.execute('''INSERT INTO Users (id, message_thread_id, act, fio, admin) VALUES (?, ?, ?, ?, ?)''', (user_id, 42, 1, 0, 0,))
 
     connection.commit()
     connection.close()
+
+def create_admins_list(admin_ids):
+    connection = sql.connect('DataBase')
+    cursor = connection.cursor()
+
+    cursor.execute('''SELECT id FROM Users WHERE admin = ?''', (1,))
+
+    admins = cursor.fetchall()
+    connection.close()
+
+    for id in admins:
+        admin_ids.append(id)
+
+
+
+def make_admin(user_id):
+    connection = sql.connect('DataBase')
+    cursor = connection.cursor()
+
+    cursor.execute('''UPDATE Users SET admin = ? WHERE id = ?''', (1 ,user_id,))
+
+
+    connection.commit()
+    connection.close()
+
+def delete_admin(user_id,admin_ids):
+    connection = sql.connect('DataBase')
+    cursor = connection.cursor()
+
+    cursor.execute('''UPDATE Users SET admin = ? WHERE id = ?''', (0 ,user_id,))
+
+    connection.commit()
+    connection.close()
+
+    admin_ids.remove(user_id)
 
 def change_fio(user_id):
     connection = sql.connect('DataBase')
@@ -60,7 +96,7 @@ def find_act(user_id): # Эта часть кода првоверяет, ФИО
 
     cursor.execute('''SELECT act FROM Users WHERE id = ?''', (user_id,))
 
-    act = cursor.fetchone()
+    act = cursor.fetchone()[0]
 
     connection.close()
 
@@ -72,9 +108,9 @@ def change_act(user_id):
 
     cursor.execute('''SELECT act FROM Users WHERE id = ?''', (user_id,))
 
-    message_tread_id = cursor.fetchone()
+    act = cursor.fetchone()[0]
 
-    if message_tread_id == 0:
+    if act == 0:
         cursor.execute('''UPDATE Users SET act = ? WHERE id = ?''', (1,user_id,))
     else:
         cursor.execute('''UPDATE Users SET act = ? WHERE id = ?''', (0, user_id,))
