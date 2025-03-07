@@ -32,10 +32,13 @@ def create_admins_list(admin_ids):
     cursor.execute('''SELECT id FROM Users WHERE admin = ?''', (1,))
 
     admins = cursor.fetchall()
+
     connection.close()
 
     for id in admins:
-        admin_ids.append(id)
+        for names in id:
+            admin_ids.append(names)
+
 
 
 
@@ -44,7 +47,6 @@ def make_admin(user_id):
     cursor = connection.cursor()
 
     cursor.execute('''UPDATE Users SET admin = ? WHERE id = ?''', (1 ,user_id,))
-
 
     connection.commit()
     connection.close()
@@ -97,7 +99,7 @@ def find_act(user_id): # Эта часть кода првоверяет, ФИО
     cursor.execute('''SELECT act FROM Users WHERE id = ?''', (user_id,))
 
     act = cursor.fetchone()[0]
-
+    print(act)
     connection.close()
 
     return act

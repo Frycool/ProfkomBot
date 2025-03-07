@@ -6,6 +6,7 @@ from aiogram import types
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
+
 from DataBase import create_table, find_group_id, check_user_id, find_chat_id, create_new_user, change_act, \
      change_message_thread_id, find_act, make_admin, create_admins_list, delete_admin
 from Buttons import leave_req, choose_form
@@ -19,7 +20,6 @@ admin_ids: list[int] = [0]
 create_table()
 create_admins_list(admin_ids)
 user_dict: dict[str, str | int | bool] = {}
-
 
 @dp.message(Command(commands=["help"]), StateFilter(default_state))
 async def help_command(message: Message):
@@ -55,39 +55,52 @@ async def start_command(message: Message):
 
 @dp.message(Command(commands=["stop"]), StateFilter(default_state))
 async def stop_command(message: Message):
-    if find_act(message.from_user.id) == 1 and message.chat.type == 'private':
+
+    if message.chat.type != 'private':
+        change_act(find_chat_id(message.message_thread_id))
+        await bot.send_message(chat_id=find_chat_id(message.message_thread_id), text="Диалог был завершен, если хотите задать новый вопрос, введите /start")
+
+    elif find_act(message.from_user.id) == 1 and message.chat.type == 'private':
         change_act(message.from_user.id)
         await bot.send_message(chat_id=maingroupid, text='Пользователь завершил диалог',
                                message_thread_id=find_group_id(message.from_user.id))
-        await bot.send_message(chat_id=message.from_user.id, text='Вы закончили диалог с абобусом')
+        await bot.send_message(chat_id=message.from_user.id, text='Вы закончили диалог с профкомом,'
+                                                                  ' если хотите задать новый вопрос, введите /start')
+
     elif find_act(message.from_user.id) == 0:
         await bot.send_message(chat_id=message.from_user.id, text='У вас нет активного диалога, '
                                                                   'если вы хотите его начать, введите команду /start')
 
 @dp.callback_query(F.data == "leave_req",StateFilter(default_state))
 async def button_check(callback: types.CallbackQuery, state: FSMContext):
-    user_id = callback.from_user.id
-    if check_user_id(user_id) == True and find_act(callback.from_user.id) == 0:
+    if check_user_id(callback.from_user.id) == True and find_act(callback.from_user.id) == 0:
 
         change_act(callback.from_user.id)
         await callback.message.answer('Задайте ваш вопрос!')
+        await bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
 
-    elif check_user_id(user_id) == True and find_act(callback.from_user.id) == 1:
+    elif check_user_id(callback.from_user.id) == True and find_act(callback.from_user.id) == 1:
 
         await callback.message.answer('Задайте ваш вопрос!')
+        await bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
 
     else:
 
-        create_new_user(user_id)
         await callback.message.answer('Введите ваше ФИО')
         await state.set_state(FSMFillForm.FIO)
+        await bot.delete_message(chat_id=callback.from_user.id, message_id=callback.message.message_id)
 
-@dp.message(StateFilter(FSMFillForm.FIO))
+@dp.message(StateFilter(FSMFillForm.FIO),  F.text)
 async def process_name_sent(message: Message, state: FSMContext):
 
     await state.update_data(FIO=message.text)
     await choose_form(message)
     await state.set_state(FSMFillForm.study_form)
+
+@dp.message(StateFilter(FSMFillForm.FIO))
+async def warning_not_name(message: Message, state: FSMContext):
+
+    await bot.send_message(text='Это не ФИО, введите ваше ФИО без использования дополнительных символов!', chat_id=message.from_user.id)
 
 @dp.callback_query(StateFilter(FSMFillForm.study_form))
 async def process_form_press(callback: types.CallbackQuery, state: FSMContext):
@@ -96,9 +109,13 @@ async def process_form_press(callback: types.CallbackQuery, state: FSMContext):
         text='Введите ваш вопрос', chat_id=callback.from_user.id)
     await state.set_state(FSMFillForm.que)
 
+@dp.message(StateFilter(FSMFillForm.study_form))
+async def warning_not_button(message: Message, state: FSMContext):
+    await bot.send_message(text='Выберите из предложенных варинтов!', chat_id=message.from_user.id)
 
-@dp.message(StateFilter(FSMFillForm.que))
+@dp.message(StateFilter(FSMFillForm.que),  F.text)
 async def process_que_sent(message: Message, state: FSMContext):
+    create_new_user(message.from_user.id)
     await state.update_data(que=message.text)
     await message.answer(text= 'Диалог начался, если вы хотите '
                                'его закончить, напишите команду /stop. '
@@ -115,6 +132,12 @@ async def process_que_sent(message: Message, state: FSMContext):
                            chat_id=maingroupid, message_thread_id=message_thread_id)
     await state.clear()
 
+@dp.message(StateFilter(FSMFillForm.que))
+async def warning_not_que(message: Message, state: FSMContext):
+    await bot.send_message(text='Данное сообщение не является вопросом, сначала введите текст вопроса. '
+                                'Любую дополнительную информацию '
+                                '(например картинка) отправьте следующим сообещнием!', chat_id=message.from_user.id)
+
 @dp.message(IsAdmin(admin_ids), StateFilter(default_state))
 async def answer_if_admins_update(message: Message):
     if message.chat.type == 'private':
@@ -122,7 +145,7 @@ async def answer_if_admins_update(message: Message):
                                                                   'ты зачем вопрос задаешь. Тебе никто не ответит!!!')
     else:
 
-        await bot.send_message(chat_id=find_chat_id(message.message_thread_id), text=message.text)
+        await message.send_copy(chat_id=find_chat_id(message.message_thread_id))
 
 @dp.message(StateFilter(default_state))
 async def send_fio(message: Message):
@@ -134,7 +157,7 @@ async def send_fio(message: Message):
 
     elif find_act(message.from_user.id) == 1 and message.chat.type == 'private':
         message_thread_id = find_group_id(message.from_user.id)
-        await bot.send_message(chat_id=maingroupid, text=message.text, message_thread_id=message_thread_id)
+        await message.send_copy(chat_id=maingroupid, message_thread_id=message_thread_id)
 
     elif find_act(message.from_user.id) == 0 and message.chat.type == 'private':
         await bot.send_message(chat_id=message.from_user.id, text='У вас нет активного диалога, если вы '
@@ -142,6 +165,5 @@ async def send_fio(message: Message):
 
 
 if __name__ == '__main__':
-    print(1)
     dp.run_polling(bot)
 
